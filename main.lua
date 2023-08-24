@@ -5,19 +5,21 @@ function love.load()
   canvas = love.graphics.newCanvas(320, 240)
   canvas:setFilter("nearest", "nearest")
 
-  player = {
+  gravity = 200
+
+  _G.player = {
     sprite = love.graphics.newImage("sprites/cat.png"),
     speed = 50,
+    jump = 100,
+    x_vel = 0,
+    y_vel = 0,
     pos = {
       x = 0,
-      y = 0
-    },
-    prev = {
-      x = 0,
-      y = 0
+      y = 88
     },
     animation = {
       current = "idle",
+      prev = "idle",
       frame = 1,
       timer = 1,
       flip = false,
@@ -26,10 +28,20 @@ function love.load()
         len = 6,
         loop = true
       },
-      ["running"] = {
+      ["run"] = {
         frames = {},
         len = 8,
         loop = true
+      },
+      ["jump"] = {
+        frames = {},
+        len = 6,
+        loop = false
+      },
+      ["fall"] = {
+        frames = {},
+        len = 2,
+        loop = false
       }
     }
   }
@@ -40,35 +52,92 @@ function love.load()
 
     local offset = 1
     -- idle
-    for i = 0, self.animation["running"].len do
+    for i = 0, self.animation["run"].len do
       table.insert(self.animation["idle"].frames,
         love.graphics.newQuad(i * frame_w, 0, frame_w, frame_h, player.sprite:getWidth(),
           player.sprite:getHeight()))
     end
     offset = self.animation["idle"].len
-    -- running
-    for i = 0, self.animation["running"].len do
-      table.insert(self.animation["running"].frames,
+    -- run
+    for i = 0, self.animation["run"].len do
+      table.insert(self.animation["run"].frames,
+        love.graphics.newQuad(i * frame_w + offset * frame_w, 0, frame_w, frame_h, player.sprite:getWidth(),
+          player.sprite:getHeight()))
+    end
+    offset = offset + self.animation["run"].len
+    -- jump
+    for i = 0, self.animation["jump"].len do
+      table.insert(self.animation["jump"].frames,
+        love.graphics.newQuad(i * frame_w + offset * frame_w, 0, frame_w, frame_h, player.sprite:getWidth(),
+          player.sprite:getHeight()))
+    end
+    offset = offset + self.animation["jump"].len
+    -- fall
+    for i = 0, self.animation["fall"].len do
+      table.insert(self.animation["fall"].frames,
         love.graphics.newQuad(i * frame_w + offset * frame_w, 0, frame_w, frame_h, player.sprite:getWidth(),
           player.sprite:getHeight()))
     end
   end
 
-  function player:update(dt)
-    self.animation.current = "idle"
+  function player:change_anim(animation, flip)
+    self.animation.prev = self.animation.current
+    self.animation.current = animation
 
-    self.prev.x = self.pos.x
-    if love.keyboard.isDown('d') then
-      self.pos.x = self.pos.x + self.speed * dt
-      self.animation.current = "running"
-      self.animation.flip = false
+    if flip ~= nil then
+      self.animation.flip = flip
+    end
+    if self.animation.prev ~= animation then -- reset animation
+      self.animation.frame = 1
+      self.animation.timer = 1
+    end
+  end
+
+  function player:update(dt)
+    if self.x_vel == 0 and self.y_vel == 0 then
+      player:change_anim("idle")
     end
 
-    self.prev.x = self.pos.x
+    player.x_vel = 0
+
+    if love.keyboard.isDown('d') then
+      player.x_vel = self.speed
+    end
+
     if love.keyboard.isDown('a') then
-      self.pos.x = self.pos.x - self.speed * dt
-      self.animation.current = "running"
-      self.animation.flip = true
+      player.x_vel = -self.speed
+    end
+
+    if love.keyboard.isDown('space') then
+      if self.y_vel == 0 then
+        self.y_vel = -1 * self.jump
+      end
+    end
+
+    if self.x_vel > 0 then
+      player:change_anim("run", false)
+    elseif self.x_vel < 0 then
+      player:change_anim("run", true)
+    end
+
+    if self.y_vel < 0 then
+      player:change_anim("jump")
+    elseif self.y_vel > 0 then
+      player:change_anim("fall")
+    end
+
+    if self.x_vel ~= 0 then
+      self.pos.x = self.pos.x + self.x_vel * dt
+    end
+
+    if self.y_vel ~= 0 then
+      self.pos.y = self.pos.y + self.y_vel * dt
+      self.y_vel = self.y_vel + gravity * dt
+    end
+    -- hit ground
+    if self.pos.y > 88 then
+      self.y_vel = 0
+      self.pos.y = 88
     end
   end
 
@@ -121,7 +190,9 @@ function love.draw()
   love.graphics.push()
   love.graphics.scale(1.5)
   love.graphics.setColor(1, 1, 1)
-  love.graphics.print(player.animation.current .. ", " .. player.animation.frame, 0, 0)
+  love.graphics.print(string.format("%s %s", player.animation.current, player.animation[player.animation.current].len), 0,
+    0)
+  love.graphics.print(string.format("x_vel %d, y_vel %d", player.x_vel, player.y_vel), 0, 20)
   love.graphics.pop()
 
   love.graphics.setCanvas(canvas)
