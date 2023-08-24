@@ -5,14 +5,17 @@ function love.load()
   canvas = love.graphics.newCanvas(320, 240)
   canvas:setFilter("nearest", "nearest")
 
-  gravity = 200
+  gravity = 400
 
   _G.player = {
     sprite = love.graphics.newImage("sprites/cat.png"),
     speed = 50,
-    jump = 100,
-    x_vel = 0,
-    y_vel = 0,
+    jump = 150,
+    dir = 1,
+    vel = {
+      x = 0,
+      y = 0
+    },
     pos = {
       x = 0,
       y = 88
@@ -22,7 +25,6 @@ function love.load()
       prev = "idle",
       frame = 1,
       timer = 1,
-      flip = false,
       ["idle"] = {
         frames = {},
         len = 6,
@@ -35,12 +37,12 @@ function love.load()
       },
       ["jump"] = {
         frames = {},
-        len = 6,
+        len = 4,
         loop = false
       },
       ["fall"] = {
         frames = {},
-        len = 2,
+        len = 3,
         loop = false
       }
     }
@@ -80,12 +82,12 @@ function love.load()
     end
   end
 
-  function player:change_anim(animation, flip)
+  function player:change_anim(animation, dir)
     self.animation.prev = self.animation.current
     self.animation.current = animation
 
-    if flip ~= nil then
-      self.animation.flip = flip
+    if dir ~= nil then
+      self.dir = dir
     end
     if self.animation.prev ~= animation then -- reset animation
       self.animation.frame = 1
@@ -94,49 +96,53 @@ function love.load()
   end
 
   function player:update(dt)
-    if self.x_vel == 0 and self.y_vel == 0 then
+    if self.vel.x == 0 and self.vel.y == 0 then
       player:change_anim("idle")
     end
 
-    player.x_vel = 0
+    player.vel.x = 0
 
     if love.keyboard.isDown('d') then
-      player.x_vel = self.speed
+      player.vel.x = self.speed
+      self.dir = 1
     end
 
     if love.keyboard.isDown('a') then
-      player.x_vel = -self.speed
+      player.vel.x = -self.speed
+      self.dir = -1
     end
 
     if love.keyboard.isDown('space') then
-      if self.y_vel == 0 then
-        self.y_vel = -1 * self.jump
+      if self.vel.y == 0 then
+        self.vel.y = -self.jump
       end
     end
 
-    if self.x_vel > 0 then
-      player:change_anim("run", false)
-    elseif self.x_vel < 0 then
-      player:change_anim("run", true)
+    if self.vel.y == 0 then
+      if self.vel.x > 0 then
+        player:change_anim("run")
+      elseif self.vel.x < 0 then
+        player:change_anim("run")
+      end
     end
 
-    if self.y_vel < 0 then
+    if self.vel.y < 0 then
       player:change_anim("jump")
-    elseif self.y_vel > 0 then
+    elseif self.vel.y > 0 then
       player:change_anim("fall")
     end
 
-    if self.x_vel ~= 0 then
-      self.pos.x = self.pos.x + self.x_vel * dt
+    if self.vel.x ~= 0 then
+      self.pos.x = self.pos.x + self.vel.x * dt
     end
 
-    if self.y_vel ~= 0 then
-      self.pos.y = self.pos.y + self.y_vel * dt
-      self.y_vel = self.y_vel + gravity * dt
+    if self.vel.y ~= 0 then
+      self.pos.y = self.pos.y + self.vel.y * dt
+      self.vel.y = self.vel.y + gravity * dt
     end
     -- hit ground
     if self.pos.y > 88 then
-      self.y_vel = 0
+      self.vel.y = 0
       self.pos.y = 88
     end
   end
@@ -162,7 +168,7 @@ function love.load()
   function player:draw()
     local current_animation = self.animation[self.animation.current]
     if current_animation ~= nil then
-      if self.animation.flip then
+      if self.dir < 0 then
         love.graphics.draw(self.sprite, current_animation.frames[self.animation.frame],
           self.pos.x, self.pos.y, 0, -1, 1, 16, 0)
       else
@@ -192,7 +198,7 @@ function love.draw()
   love.graphics.setColor(1, 1, 1)
   love.graphics.print(string.format("%s %s", player.animation.current, player.animation[player.animation.current].len), 0,
     0)
-  love.graphics.print(string.format("x_vel %d, y_vel %d", player.x_vel, player.y_vel), 0, 20)
+  love.graphics.print(string.format("vel.x %d, vel.y %d", player.vel.x, player.vel.y), 0, 20)
   love.graphics.pop()
 
   love.graphics.setCanvas(canvas)
