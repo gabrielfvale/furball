@@ -1,17 +1,17 @@
----@diagnostic disable: lowercase-global
+---@diagnostic disable: lowercase-global, undefined-field
 love = require('love')
 local anim8 = require('lib.anim8')
 
 function love.load()
   love.graphics.setDefaultFilter("nearest", "nearest")
 
-  gravity = 800
+  gravity = 1000
   scale_factor = 10
 
   _G.player = {
     sprite = love.graphics.newImage("sprites/cat.png"),
     speed = 50 * scale_factor,
-    jump = 400,
+    jump = 600,
     dir = "R",
     vel = {
       x = 0,
@@ -38,10 +38,10 @@ function love.load()
     self.animation.runR = anim8.newAnimation(self.animation.grid('7-14', 1), 0.1)
     self.animation.runL = self.animation.runR:clone():flipH()
     -- jump
-    self.animation.jumpR = anim8.newAnimation(self.animation.grid('15-19', 1), 0.1, 'pauseAtEnd')
+    self.animation.jumpR = anim8.newAnimation(self.animation.grid('15-17', 1), 0.1, 'pauseAtEnd')
     self.animation.jumpL = self.animation.jumpR:clone():flipH()
     -- fall
-    self.animation.fallR = anim8.newAnimation(self.animation.grid('19-21', 1), 0.1, 'pauseAtEnd')
+    self.animation.fallR = anim8.newAnimation(self.animation.grid('18-20', 1), 0.1, 'pauseAtEnd')
     self.animation.fallL = self.animation.fallR:clone():flipH()
   end
 
@@ -58,7 +58,6 @@ function love.load()
   end
 
   function player:update(dt)
-    ---@diagnostic disable-next-line: undefined-field
     player:getAnim():update(dt)
 
     if self.vel.x == 0 and self.vel.y == 0 then
@@ -92,9 +91,15 @@ function love.load()
     end
 
     if self.vel.y < 0 then
-      player.animation.current = "jump"
+      if self.animation.current ~= "jump" then
+        player.animation.current = "jump"
+        player:getAnim():gotoFrame(1)
+      end
     elseif self.vel.y > 0 then
-      player.animation.current = "fall"
+      if self.animation.current ~= "fall" then
+        player.animation.current = "fall"
+        player:getAnim():gotoFrame(1)
+      end
     end
 
     if self.vel.x ~= 0 then
@@ -113,7 +118,6 @@ function love.load()
   end
 
   function player:draw()
-    ---@diagnostic disable-next-line: undefined-field
     player:getAnim():draw(self.sprite, self.pos.x, self.pos.y, nil, scale_factor, scale_factor)
   end
 
@@ -137,6 +141,8 @@ function love.draw()
   love.graphics.print(string.format("%s", player.animation.current), 0, 0)
   love.graphics.print(string.format("vel.x %d, vel.y %d", player.vel.x, player.vel.y), 0, 20)
   love.graphics.pop()
+
+  love.graphics.setBackgroundColor(127 / 255, 143 / 255, 166 / 255)
 
   player:draw()
 end
