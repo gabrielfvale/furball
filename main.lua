@@ -9,10 +9,9 @@ function love.load()
   scale_factor = 10
 
   _G.player = {
-    sprite = love.graphics.newImage("sprites/cat.png"),
     speed = 50 * scale_factor,
     jump = 600,
-    dir = "R",
+    dir = 1,
     vel = {
       x = 0,
       y = 0
@@ -21,40 +20,30 @@ function love.load()
       x = 0,
       y = love.graphics.getHeight() - 20 * scale_factor
     },
+    sprite = love.graphics.newImage("sprites/cat.png"),
+    quad_dim = {
+      w = 16,
+      h = 20
+    },
     animation = {
       current = "idle",
     }
   }
 
   function player:load_sprite()
-    local frame_w = 16
-    local frame_h = 20
-
-    self.animation.grid = anim8.newGrid(frame_w, frame_h, self.sprite:getWidth(), self.sprite:getHeight())
+    self.animation.grid = anim8.newGrid(self.quad_dim.w, self.quad_dim.h, self.sprite:getWidth(), self.sprite:getHeight())
     -- idle
-    self.animation.idleR = anim8.newAnimation(self.animation.grid('1-6', 1), 0.1)
-    self.animation.idleL = self.animation.idleR:clone():flipH()
+    self.animation.idle = anim8.newAnimation(self.animation.grid('1-6', 1), 0.1)
     -- run
-    self.animation.runR = anim8.newAnimation(self.animation.grid('7-14', 1), 0.1)
-    self.animation.runL = self.animation.runR:clone():flipH()
+    self.animation.run = anim8.newAnimation(self.animation.grid('7-14', 1), 0.1)
     -- jump
-    self.animation.jumpR = anim8.newAnimation(self.animation.grid('15-17', 1), 0.1, 'pauseAtEnd')
-    self.animation.jumpL = self.animation.jumpR:clone():flipH()
+    self.animation.jump = anim8.newAnimation(self.animation.grid('15-17', 1), 0.1, 'pauseAtEnd')
     -- fall
-    self.animation.fallR = anim8.newAnimation(self.animation.grid('18-20', 1), 0.1, 'pauseAtEnd')
-    self.animation.fallL = self.animation.fallR:clone():flipH()
+    self.animation.fall = anim8.newAnimation(self.animation.grid('18-20', 1), 0.1, 'pauseAtEnd')
   end
 
   function player:getAnim()
-    return player.animation[player.animation.current .. player.dir]
-  end
-
-  function player:change_anim(animation, dir)
-    self.animation.current = animation
-
-    if dir ~= nil then
-      self.dir = dir
-    end
+    return player.animation[player.animation.current]
   end
 
   function player:update(dt)
@@ -68,12 +57,12 @@ function love.load()
 
     if love.keyboard.isDown('d') then
       player.vel.x = self.speed
-      self.dir = "R"
+      self.dir = 1
     end
 
     if love.keyboard.isDown('a') then
       player.vel.x = -self.speed
-      self.dir = "L"
+      self.dir = -1
     end
 
     if love.keyboard.isDown('space') then
@@ -83,9 +72,7 @@ function love.load()
     end
 
     if self.vel.y == 0 then
-      if self.vel.x > 0 then
-        player.animation.current = "run"
-      elseif self.vel.x < 0 then
+      if self.vel.x ~= 0 then
         player.animation.current = "run"
       end
     end
@@ -94,11 +81,13 @@ function love.load()
       if self.animation.current ~= "jump" then
         player.animation.current = "jump"
         player:getAnim():gotoFrame(1)
+        player:getAnim():resume()
       end
     elseif self.vel.y > 0 then
       if self.animation.current ~= "fall" then
         player.animation.current = "fall"
         player:getAnim():gotoFrame(1)
+        player:getAnim():resume()
       end
     end
 
@@ -118,7 +107,9 @@ function love.load()
   end
 
   function player:draw()
-    player:getAnim():draw(self.sprite, self.pos.x, self.pos.y, nil, scale_factor, scale_factor)
+    player:getAnim():draw(self.sprite, self.pos.x + self.quad_dim.w / 2, self.pos.y, nil, self.dir * scale_factor,
+      scale_factor,
+      self.quad_dim.w / 2, 0)
   end
 
   player:load_sprite()
